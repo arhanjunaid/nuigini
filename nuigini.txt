@@ -1,0 +1,761 @@
+﻿awesome — here’s a deep, build-ready blueprint for an Australian General Insurance web app, with in-detailed workflows and modules from Sales → Payments → Claims → Reinsurance, plus data, states, rules, and APIs you can hand to design + dev.
+________________
+
+
+1) Roles & Access (RBAC/ABAC)
+Roles: Customer, Sales Agent, Underwriter, Claims Handler, Finance Officer, Reinsurance Analyst, Broker, Ops/Admin, Auditor (read-only).
+Access: Route-level and field-level (e.g., mask card PAN; restrict pricing overrides to UW/Manager).
+Session: SSO/OIDC, MFA, device binding, IP allowlists (internal portals).
+________________
+
+
+2) Core Modules
+2.1 Lead, Prospect & Distribution
+Purpose: Capture demand, qualify, and start quoting.
+Screens
+* Lead List → Lead Details (timeline, comms, “Start Quote”)
+
+* Capture Lead (web, broker, call-centre)
+
+* Partner/Broker Dashboard (pipeline, commissions)
+
+Key Entities
+   * Lead(id, channel, source, lob, status, owner, consentFlags)
+
+   * Party(person/org, addresses, contacts)
+
+   * Activity(note, call, email)
+
+States
+      * New → Contacted → Qualified → Disqualified → ConvertedToQuote
+
+Validations
+         * Duplicate detection (email+phone or fuzzy name+DOB)
+
+         * Consent tick (marketing, eComms)
+
+         * Channel attribution (UTM/referrer)
+
+APIs
+            * POST /leads, GET /leads/{id}, POST /leads/{id}:convert
+
+Events
+               * LeadCreated, LeadQualified, LeadConverted
+
+________________
+
+
+2.2 Onboarding, KYC/AML & Sanctions
+Purpose: Verify customer identity and regulatory checks before bind.
+Screens
+                  * Customer Details
+
+                  * Identity Verification (OTP; licence/passport)
+
+                  * Sanctions/PEP Check
+
+                  * Declarations & Disclosures (TMD/DDO, duty of disclosure)
+
+                  * Review & Confirm
+
+States
+                     * KYC.Pending → KYC.Verified | KYC.SoftFail (ManualReview) | KYC.HardFail
+
+APIs
+                        * POST /kyc/start, POST /kyc/{id}/verify, GET /kyc/{id}
+
+Rules
+                           * Hard block at Bind if not Verified.
+
+                           * Store evidence (reference IDs, provider response hashes) for audit.
+
+________________
+
+
+2.3 Quoting & Underwriting
+Purpose: Collect risk data, rate premium, apply UW rules.
+Screens (per LOB)
+                              * Select LOB
+
+                              * Risk Capture (dynamic, progressive)
+
+                              * Quote Summary (options/excesses)
+
+                              * Quote Compare
+
+                              * UW Referral Queue
+
+                              * Quote Documents (PDS, Quote PDF)
+
+Key Entities
+                                 * Quote(id, lob, riskData, coverages[], ratingVersion, breakdown, status)
+
+                                 * Coverage(code, sumInsured, excess, limits, sublimits)
+
+                                 * UWRuleResult(action: Accept/Refer/Decline, reasons[])
+
+States
+                                    * Draft → Rated → Referred → Accepted → Expired
+
+Rating Formula (AU skeleton)
+                                       * Base Rate (by peril/cover)
+
+                                          * Loadings (risk factors)
+− Discounts (NCD, bundling, promo)
+= Technical Premium (ex-tax)
+
+                                          * Fees (policy, UW, brokerage where applicable)
+= Premium Before Taxes
+
+                                          * GST (10%)
+
+                                          * Stamp Duty (state × class; varies by jurisdiction/LOB)
+
+                                          * ESL (NSW only, % on premium component as applicable)
+= Total Payable (Gross)
+
+Keep rate tables versioned; stamp duty & ESL tables configurable by State (NSW/VIC/QLD/SA/WA/TAS/NT/ACT) and product class.
+Underwriting Rules
+                                             * Auto-decline (e.g., high flood score threshold, prohibited occupations)
+
+                                             * Auto-refer (claims history > N, high sum insured, manual valuation)
+
+                                             * Auto-accept with conditions (higher excess; endorsements)
+
+APIs
+                                                * POST /quotes (rate), PUT /quotes/{id} (re-rate), POST /quotes/{id}/accept
+
+                                                * GET /uw/referrals, POST /uw/referrals/{id}:decision
+
+Events
+                                                   * QuoteRated, QuoteReferred, QuoteAccepted
+
+________________
+
+
+2.4 Bind & Policy Administration
+Purpose: Convert accepted quote to policy and manage lifecycle.
+Screens
+                                                      * Bind Checklist (KYC=Verified, Referral=Cleared, Address=Validated)
+
+                                                      * Pre-Bind Review
+
+                                                      * Policy Issued (number, inception)
+
+                                                      * Policy Overview (covers, payments, docs, endorsements)
+
+                                                      * Endorsement Wizard (change drivers/items/address/excess)
+
+                                                      * Cancellation Wizard (pro-rata/short-rate)
+
+                                                      * Renewal Workbench (refresh/re-rate) & Invitation
+
+Key Entities
+                                                         * Policy(id, policyNumber, lob, period: inception/expiry, status)
+
+                                                         * RiskItem (vehicle, address, business)
+
+                                                         * Endorsement(id, reason, delta, premiumAdjustment)
+
+                                                         * Renewal(terms, invitationDate, decision)
+
+States
+                                                            * NewBusiness: PendingBind → Active
+
+                                                            * Active ↔ Endorsed (each endorsement is a child transaction)
+
+                                                            * Active → RenewalOffered → Renewed | Lapsed
+
+                                                            * Active → Cancelled (reason, calc method)
+
+APIs
+                                                               * POST /policies (bind), GET /policies/{id}
+
+                                                               * POST /policies/{id}/endorsements (creates MTA)
+
+                                                               * POST /policies/{id}/cancellations
+
+                                                               * POST /policies/{id}/renewals:offer, :accept
+
+Events
+                                                                  * PolicyBound, CoverageActivated, EndorsementIssued, RenewalOffered, RenewalBound, PolicyCancelled
+
+Calculations
+                                                                     * Endorsement Proration: additional premium/refund = ΔAnnualPremium × (daysRemaining / termDays) ± fees
+
+                                                                     * Cancellation: short-rate table or pro-rata; refund GST and duties per jurisdictional rules
+
+________________
+
+
+2.5 Payments & Billing
+Purpose: Collect, reconcile, and manage premium cashflows and arrears.
+Screens
+                                                                        * Payment Options (Annual, Monthly DD, Premium Funding, BPAY)
+
+                                                                        * Card Payment (tokenized)
+
+                                                                        * Direct Debit Mandate (schedule)
+
+                                                                        * Payment Authorization Result (success/fail; retry)
+
+                                                                        * Billing & Instalments (plan, arrears, dunning)
+
+                                                                        * Refunds & Chargebacks
+
+                                                                        * Cashbook & Allocations
+
+Key Entities
+                                                                           * Invoice(id, policyId, period, amount, taxBreakdown)
+
+                                                                           * PaymentIntent(id, method, status)
+
+                                                                           * InstalmentPlan(schedule[], mandateId)
+
+                                                                           * SettlementBatch(gateway payout)
+
+States
+                                                                              * Intent: Created → Authorized → Captured | Failed | Cancelled
+
+                                                                              * Instalment: Scheduled → Due → Paid | Failed → Retried(n) → Arrears
+
+APIs
+                                                                                 * POST /payments/intents (create)
+
+                                                                                 * POST /payments/intents/{id}:authorize, :capture, :void
+
+                                                                                 * POST /instalments/plans, PATCH /instalments/{id}
+
+                                                                                 * POST /refunds
+
+Reconciliation
+                                                                                    * Import gateway settlement → allocate to invoices → fees/chargebacks → GL journals
+
+Events
+                                                                                       * PaymentAuthorized, PaymentCaptured, PaymentFailed, RefundProcessed, ArrearsStarted, ArrearsCleared
+
+________________
+
+
+2.6 Claims Management
+Purpose: End-to-end FNOL to settlement, with controls.
+Screens
+                                                                                          * FNOL (incident details, photos, witnesses)
+
+                                                                                          * Coverage Check
+
+                                                                                          * Claim Overview (timeline, reserves, tasks)
+
+                                                                                          * Triage & Liability (severity, responsibility)
+
+                                                                                          * Tasks/Assignments (assessor, repairer)
+
+                                                                                          * Reserving (by head of damage; approvals by thresholds)
+
+                                                                                          * Assessment & Quotes (compare supplier quotes)
+
+                                                                                          * Settlement Options (repair/cash/replace)
+
+                                                                                          * Claim Payments (customer, supplier)
+
+                                                                                          * Recoveries & Subrogation
+
+                                                                                          * Complaints & Escalations
+
+                                                                                          * Claim Documents (letters, invoices)
+
+Key Entities
+                                                                                             * Claim(id, policyId, incidentDate, cause, status)
+
+                                                                                             * Reserve(component, initial, movement, approvedBy)
+
+                                                                                             * Payment(claimPaymentId, payee, amount, component, method)
+
+                                                                                             * Supplier(vendor, agreement terms)
+
+                                                                                             * Recovery(thirdParty, insurer, amount, status)
+
+States
+                                                                                                * Opened → Investigating → Assessed → SettlementPending → Settled → Closed
+
+                                                                                                * Branches: Recovery.Open → Recovery.Closed; Complaint.Open → Complaint.Resolved
+
+Controls
+                                                                                                   * 4-eyes approval for reserve increases > threshold
+
+                                                                                                   * Fraud signals (e.g., claim within X days of inception, inconsistent statements)
+
+APIs
+                                                                                                      * POST /claims, GET /claims/{id}
+
+                                                                                                      * POST /claims/{id}/reserves, /assignments, /payments
+
+                                                                                                      * POST /claims/{id}/settlement
+
+                                                                                                      * POST /recoveries
+
+Events
+                                                                                                         * ClaimOpened, ReserveChanged, SupplierAssigned, ClaimPaid, RecoveryReceived, ClaimClosed
+
+________________
+
+
+2.7 Reinsurance (Treaty & Facultative)
+Purpose: Automate cessions and recoveries for premium and claims.
+Screens
+                                                                                                            * Treaty Program Setup (QS/Surplus/XoL; layers, shares, attachments, commissions, reinstatements)
+
+                                                                                                            * Cession Rules (per LOB/risk attribute)
+
+                                                                                                            * Policy Cession Snapshot (at bind & endorsement)
+
+                                                                                                            * Premium Bordereaux (period/layer)
+
+                                                                                                            * Claims Bordereaux
+
+                                                                                                            * Recovery Tracking (requests, receipts)
+
+                                                                                                            * Reinsurer Statements (ageing, commissions)
+
+Key Entities
+                                                                                                               * Treaty(id, type, layers[], share%, commission%, inception/expiry)
+
+                                                                                                               * Cession(policyId or riskItemId, layerAllocations[], effectiveDate)
+
+                                                                                                               * ReinsStatement(period, type: premium/claims, balances)
+
+                                                                                                               * RecoveryRequest(claimId, treatyId, amountRequested, status)
+
+Workflow
+                                                                                                                  1. At Bind / Endorsement: determine cession allocation; stamp Cession snapshot.
+
+                                                                                                                  2. Monthly/Quarterly: generate Premium BDX (gross premium, taxes, net of commission).
+
+                                                                                                                  3. At Claim Reserve/Payment: allocate incurred/paid to layers; create Claim BDX.
+
+                                                                                                                  4. Recovery: submit request → monitor receipt → allocate cash.
+
+APIs
+                                                                                                                     * POST /reinsurance/treaties
+
+                                                                                                                     * POST /reinsurance/cessions:calculate (policy snapshot)
+
+                                                                                                                     * GET /reinsurance/bdx/premium?period=YYYY-MM
+
+                                                                                                                     * GET /reinsurance/bdx/claims?period=YYYY-MM
+
+                                                                                                                     * POST /reinsurance/recoveries
+
+Events
+                                                                                                                        * ReinsuranceCeded, ReinsuranceBdxGenerated, ReinsRecoveryBooked
+
+________________
+
+
+2.8 Finance, Tax & Accounting
+Purpose: Accurate statutory & management reporting.
+Screens
+                                                                                                                           * Premium Ledger (earned/unearned)
+
+                                                                                                                           * Duties & Levies Calculator (state stamp duty, ESL, GST)
+
+                                                                                                                           * Commission Manager (insurer/broker/agent)
+
+                                                                                                                           * Settlements & Disbursements
+
+                                                                                                                           * GL Export (mappings per CoA)
+
+                                                                                                                           * BAS/GST support
+
+Core Calcs
+                                                                                                                              * UPR: straight-line or product-specific pattern
+
+                                                                                                                              * Commissions: % of net premium (pre/post taxes per contract)
+
+                                                                                                                              * Taxes:
+
+                                                                                                                                 * GST 10% (on premium/fees; not on stamp duty)
+
+                                                                                                                                 * Stamp Duty: by state and class (config table)
+
+                                                                                                                                 * ESL (NSW): % on certain components before duty; config and effective dates
+
+APIs
+                                                                                                                                    * GET /finance/ledgers/premium
+
+                                                                                                                                    * POST /finance/exports/gl?period=YYYY-MM
+
+________________
+
+
+2.9 Reporting, Compliance & Ops
+Screens
+                                                                                                                                       * Sales & Conversion Dashboard
+
+                                                                                                                                       * UW Performance (hit ratios, refer rates)
+
+                                                                                                                                       * Claims KPIs (cycle time, severity, leakage)
+
+                                                                                                                                       * Loss Ratio by LOB/Channel/Broker
+
+                                                                                                                                       * Renewal & Retention
+
+                                                                                                                                       * Complaints Register (SLA timers)
+
+                                                                                                                                       * Audit Log Viewer (entity diff, who/what/when)
+
+                                                                                                                                       * Incidents & Breaches (security, operational)
+
+Exports
+                                                                                                                                          * CSV/XLSX, API, and scheduled email.
+
+________________
+
+
+2.10 Admin & Configuration
+Screens
+                                                                                                                                             * Users & Roles
+
+                                                                                                                                             * Product Catalog (LOBs, covers, limits, excesses)
+
+                                                                                                                                             * Rating Table Manager (promote versions Dev→UAT→Prod)
+
+                                                                                                                                             * UW Rules Manager (conditions, outcomes)
+
+                                                                                                                                             * Duty/ESL/GST Tables (per state, effective dates)
+
+                                                                                                                                             * Document Templates (schedule, letters, invoices)
+
+                                                                                                                                             * Notifications (email/SMS templates, webhooks)
+
+                                                                                                                                             * Integrations (payments, KYC, address, funding)
+
+                                                                                                                                             * Feature Flags
+
+________________
+
+
+3) Detailed End-to-End Workflows (Screen-by-Screen)
+3.1 New Business (Lead → Quote → Bind → Pay → Issue)
+                                                                                                                                                1. Lead List → Create Lead → Lead Details → Start Quote
+
+                                                                                                                                                2. Select LOB → Risk Capture – [LOB] (progressive form)
+
+                                                                                                                                                   * Real-time Validate (address/GNAF, VIN/rego, prior claims lookup if integrated)
+
+                                                                                                                                                      3. Quote Summary (options) → Quote Compare
+
+                                                                                                                                                         * If Refer: UW Referral Queue → decision (Accept / Decline / Accept with conditions)
+
+                                                                                                                                                            4. Convert to Proposal → Customer Details → KYC / Sanctions
+
+                                                                                                                                                            5. Declarations & Disclosures → Pre-Bind Review (final price + breakdown)
+
+                                                                                                                                                            6. Payment Options (Card/DD/BPAY/Funding) → Authorization Result
+
+                                                                                                                                                            7. Policy Issued → Document Center (Schedule, Invoice, PDS)
+Events: LeadConverted, QuoteRated, QuoteAccepted, PaymentCaptured, PolicyBound
+
+Error/Edge Handling
+                                                                                                                                                               * Payment fail → retry path; hold coverage until captured (or bind on auth per product rule)
+
+                                                                                                                                                               * KYC soft fail → manual review lane; expiry timer on quote
+
+________________
+
+
+3.2 Endorsement (Change Risk → Re-rate → Prorate → Issue)
+                                                                                                                                                                  1. Policy Overview → Endorsement Wizard
+
+                                                                                                                                                                  2. Apply changes (e.g., add driver, change address) → Endorsement Re-Rate
+
+                                                                                                                                                                  3. Proration & Fees (Δ premium; schedule impact)
+
+                                                                                                                                                                  4. Confirm & Issue Endorsement → Document Center
+
+                                                                                                                                                                  5. If additional premium → Billing & Instalments (collect now or add to plan)
+
+________________
+
+
+3.3 Cancellation
+                                                                                                                                                                     1. Policy Overview → Cancellation Wizard (reason, effective date)
+
+                                                                                                                                                                     2. Select Pro-rata or Short-rate method (per product rule)
+
+                                                                                                                                                                     3. System calculates refund (premiums, GST, duties, ESL as applicable)
+
+                                                                                                                                                                     4. Refunds & Chargebacks (if money back) → Cancellation Notice
+
+________________
+
+
+3.4 Renewal (Offer → Decide → Pay → Issue)
+                                                                                                                                                                        1. Renewal Workbench (refresh data, re-rate, apply UW rules)
+
+                                                                                                                                                                        2. Renewal Invitation (email/sms/portal)
+
+                                                                                                                                                                        3. Optional Pricing Override (with reason & approvals)
+
+                                                                                                                                                                        4. Renewal Acceptance
+
+                                                                                                                                                                        5. If payment needed → Payment Options → Authorization Result
+
+                                                                                                                                                                        6. Policy Issued (Renewed) → Document Center
+
+________________
+
+
+3.5 Claims (FNOL → Triage → Assess/Settle → Pay → Close)
+                                                                                                                                                                           1. FNOL (incident capture, geolocation/time, photos) → Coverage Check
+
+                                                                                                                                                                           2. Claim Overview (create tasks; assign handler) → Triage & Liability
+
+                                                                                                                                                                           3. Reserving (componentized; approval thresholds)
+
+                                                                                                                                                                           4. Supplier Network (assign assessor/repairer) → Assessment & Quotes
+
+                                                                                                                                                                           5. Settlement Options (cash/repair/replace) → Claim Payments
+
+                                                                                                                                                                           6. Recoveries & Subrogation (if liable third party)
+
+                                                                                                                                                                           7. Complaints (if raised) with SLA timers
+
+                                                                                                                                                                           8. Close Claim (when all work & payments reconciled)
+
+Controls
+                                                                                                                                                                              * Automated fraud flags; audit trail for every reserve/payment change
+
+                                                                                                                                                                              * Payment holds until bank details verified & sanctions re-check
+
+________________
+
+
+3.6 Reinsurance (Cessions & Recoveries)
+                                                                                                                                                                                 1. Treaty Program Setup (QS/Surplus/XoL; periods; commissions; reinstatements)
+
+                                                                                                                                                                                 2. Cession Rules (per LOB/risk)
+
+                                                                                                                                                                                 3. On Policy Bind/Endorsement → Policy Cession Snapshot
+
+                                                                                                                                                                                 4. Periodic Premium Bordereaux (gross premium, commission, net)
+
+                                                                                                                                                                                 5. On Claim Reserve/Payment → allocate to layers → Claims Bordereaux
+
+                                                                                                                                                                                 6. Recovery Tracking (requests → acknowledgements → receipts)
+
+                                                                                                                                                                                 7. Reinsurer Statements & Ageing → cash allocation
+
+________________
+
+
+4) Data Model (high-level)
+                                                                                                                                                                                    * Party(partyId, type: Individual/Org, KYCStatus, sanctionsFlags, contacts[])
+
+                                                                                                                                                                                    * Address(DPID, geocodes, riskSignals)
+
+                                                                                                                                                                                    * Lead → Quote → Policy (1:n lifecycle)
+
+                                                                                                                                                                                    * Quote(quoteId, lob, riskData(JSON), ratingVersion, breakdown{technical, fees, GST, duty, ESL}, status)
+
+                                                                                                                                                                                    * Policy(policyId, number, brand, productCode, term, status, riskItems[], coverages[])
+
+                                                                                                                                                                                    * Billing(invoiceId, amountGross, taxes{GST,duty,ESL}, dueDate)
+
+                                                                                                                                                                                    * Payment(paymentId, method, status, gatewayRefs)
+
+                                                                                                                                                                                    * Claim(claimId, policyId, incident, reserves[], payments[], suppliers[])
+
+                                                                                                                                                                                    * Reinsurance(treatyId, cessions[], statements[], recoveries[])
+
+                                                                                                                                                                                    * AuditLog(entityType, entityId, actor, action, before/after, timestamp)
+
+All write operations emit events to a bus for downstream warehouse/BI.
+________________
+
+
+5) Integrations (AU-centric)
+                                                                                                                                                                                       * Address & Geocoding: G-NAF/PSMA; flood/fire risk enrichers as optional.
+
+                                                                                                                                                                                       * KYC/AML & Sanctions: AUSTRAC-aligned vendor; store provider refs (not PII dumps).
+
+                                                                                                                                                                                       * Payments: Stripe/Braintree for cards; Ezidebit for DD; BPAY via bank partner; Premium Funding (APIs).
+
+                                                                                                                                                                                       * Docs: Templating (e.g., DocRaptor/WeasyPrint) → immutable storage (S3).
+
+                                                                                                                                                                                       * Broker: Portal SSO + commission statements; BDX exports.
+
+                                                                                                                                                                                       * Analytics: Warehouse (Snowflake/BigQuery) + BI (Power BI/Tableau).
+
+________________
+
+
+6) Calculations & Rules (explicit)
+                                                                                                                                                                                          * Duty/ESL Config:
+ DutyRate[state, class, effectiveFrom..To]
+ ESLRate[state=NSW, class, effectiveFrom..To]
+
+                                                                                                                                                                                          * Premium Breakdown (example fields):
+
+                                                                                                                                                                                             * basePremiumExTax
+
+                                                                                                                                                                                             * feesExTax
+
+                                                                                                                                                                                             * premiumBeforeTax = base + fees
+
+                                                                                                                                                                                             * gst = roundHalfUp(0.10 * taxableComponents)
+
+                                                                                                                                                                                             * esl = roundHalfUp(ESLRate * eligibleComponents)
+
+                                                                                                                                                                                             * stampDuty = roundHalfUp(DutyRate * dutyBase)
+
+                                                                                                                                                                                             * totalPayable = premiumBeforeTax + gst + esl + stampDuty
+
+                                                                                                                                                                                                * Proration: day-count actual/365; configurable to actual/366 when leap spans.
+
+                                                                                                                                                                                                * Instalments: schedule with clear dueDate, amount, status; dunning: D+1, D+4, D+7, D+14.
+
+________________
+
+
+7) Non-Functional Requirements
+                                                                                                                                                                                                   * Security: OWASP, tokenization for payments, PII encryption at rest, field-level masking.
+
+                                                                                                                                                                                                   * Reliability: Idempotent APIs (Idempotency-Key), retries with backoff, DLQs.
+
+                                                                                                                                                                                                   * Observability: Trace IDs across services, business metrics (quote latency, payment failure rate, claim cycle time).
+
+                                                                                                                                                                                                   * Compliance: Full audit trail; data retention & DSAR (export/delete).
+
+                                                                                                                                                                                                   * Promotion: Versioned rating tables & rule sets; blue/green deploys.
+
+                                                                                                                                                                                                   * Performance: P95 quote rate < 800ms with warm caches; FNOL save < 500ms.
+
+________________
+
+
+8) API Contract (outline)
+Gateway: REST+JSON, OAuth2 (client creds/internal; auth code for portals).
+Common: x-request-id, idempotency-key, x-actor.
+                                                                                                                                                                                                      * Leads
+ POST /leads → {leadId}
+GET /leads/{id}
+ POST /leads/{id}:convert → {quoteId}
+
+                                                                                                                                                                                                      * Quotes
+ POST /quotes (body: lob, riskData, options) → {quoteId, breakdown[]}
+PUT /quotes/{id} (update risk) → re-rate
+POST /quotes/{id}:refer / :accept
+ GET /quotes/{id}/documents (Quote PDF, PDS links)
+
+                                                                                                                                                                                                      * Policies
+ POST /policies (from quoteId) → {policyId, number}
+GET /policies/{id}
+ POST /policies/{id}/endorsements
+ POST /policies/{id}/cancellations
+ POST /policies/{id}/renewals:offer / :accept
+
+                                                                                                                                                                                                      * Payments
+ POST /payments/intents (amount, method)
+POST /payments/intents/{id}:authorize|capture|void
+ POST /instalments/plans / GET /instalments/{id}
+ POST /refunds
+
+                                                                                                                                                                                                      * Claims
+ POST /claims (policyId, incident) → {claimId}
+POST /claims/{id}/reserves
+ POST /claims/{id}/payments
+ POST /claims/{id}/close
+
+                                                                                                                                                                                                      * Reinsurance
+ POST /reinsurance/treaties
+ POST /reinsurance/cessions:calculate
+ GET /reinsurance/bdx/premium?period=
+ GET /reinsurance/bdx/claims?period=
+ POST /reinsurance/recoveries
+
+                                                                                                                                                                                                      * Admin
+ POST /admin/rating-tables (versioned)
+POST /admin/duty-rates / POST /admin/esl-rates
+ POST /admin/uw-rules
+ POST /admin/templates
+
+________________
+
+
+9) Event Model (for the bus)
+                                                                                                                                                                                                         * LeadCreated, LeadConverted
+
+                                                                                                                                                                                                         * KYCCompleted, KYCSoftFail
+
+                                                                                                                                                                                                         * QuoteRated, QuoteReferred, QuoteAccepted
+
+                                                                                                                                                                                                         * PolicyBound, CoverageActivated
+
+                                                                                                                                                                                                         * PaymentAuthorized, PaymentCaptured, PaymentFailed, RefundProcessed
+
+                                                                                                                                                                                                         * EndorsementIssued, RenewalOffered, RenewalBound, PolicyCancelled
+
+                                                                                                                                                                                                         * ClaimOpened, ReserveChanged, SupplierAssigned, ClaimPaid, RecoveryReceived
+
+                                                                                                                                                                                                         * ReinsuranceCeded, ReinsuranceBdxGenerated, ReinsRecoveryBooked
+
+Each event includes actor, timestamp, entityRef, diff (where relevant).
+________________
+
+
+10) UX Patterns & Screen Behavior
+                                                                                                                                                                                                            * Sticky action bars (Save, Refer, Bind, Issue, Pay).
+
+                                                                                                                                                                                                            * Smart validation (address/vehicle lookups inline; explain price drivers).
+
+                                                                                                                                                                                                            * Docs tab on every key entity (Policy, Claim, Quote).
+
+                                                                                                                                                                                                            * Audit tab visible to Admin/Auditor roles.
+
+                                                                                                                                                                                                            * Breakdown panel always shows Base, Fees, GST, Duty, ESL with tooltips.
+
+                                                                                                                                                                                                            * Accessibility: WCAG AA, focus/contrast, keyboard flows.
+
+                                                                                                                                                                                                            * Global search: policies, claims, parties.
+
+________________
+
+
+11) Acceptance Criteria (samples)
+Quote Rating
+                                                                                                                                                                                                               * Given valid Motor risk, when “Rate” is clicked, then a price returns ≤ 800ms P95 with breakdown fields present; UW rules evaluated; refer/decline reasons listed.
+
+Bind
+                                                                                                                                                                                                                  * Bind is blocked unless KYCStatus=Verified AND ReferralStatus=Cleared AND PaymentCaptured=true (unless product allows bind-on-auth, then captured within N hours or auto cancel).
+
+Endorsement
+                                                                                                                                                                                                                     * Changing address triggers re-rate; proration uses actual/365; doc generated; audit entry includes before/after risk deltas.
+
+Claims Payment
+                                                                                                                                                                                                                        * Any claim payment > threshold requires manager approval; sanction check re-run within T-24h; payment remits to verified payee only.
+
+Reinsurance
+                                                                                                                                                                                                                           * On bind, cession snapshot stored; monthly premium BDX reconciles to cashbook totals ± tolerance; recoveries allocate to claim components.
+
+________________
+
+
+12) Test Scenarios (high-value)
+                                                                                                                                                                                                                              * New Business: NSW home policy with ESL and duty; card payment fail → retry succeeds.
+
+                                                                                                                                                                                                                              * Endorsement: Add driver mid-term; extra premium prorated; DD schedule auto-updates.
+
+                                                                                                                                                                                                                              * Cancellation: Short-rate vs pro-rata comparison; refund GST/duty correctly.
+
+                                                                                                                                                                                                                              * Renewal: Auto-renew token success; override with approval workflow.
+
+                                                                                                                                                                                                                              * Claims: FNOL within 5 days of inception → fraud flag; reserve uplift > threshold triggers approval; supplier invoice paid; recovery received.
+
+                                                                                                                                                                                                                              * Reinsurance: QS 50% + XoL; premium and claim BDX agree with ledger; recovery posting reduces claim outstanding.
+
+________________
+
+
+13) Next step (optional)
+I can drop this into a clickable flow diagram + Next.js route map (files/folders) so your team can build directly. If you want that, say “make the canvas”, and I’ll generate a visual you can iterate on.

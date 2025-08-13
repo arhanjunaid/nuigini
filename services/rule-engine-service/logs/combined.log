@@ -1,0 +1,2 @@
+{"level":"info","message":"Database initialized successfully","service":"rule-engine-service","timestamp":"2025-08-12T17:11:00.435Z"}
+{"level":"info","message":"Rule Engine Service running on port 3007","service":"rule-engine-service","timestamp":"2025-08-12T17:11:00.442Z"}

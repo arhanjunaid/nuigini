@@ -1,0 +1,343 @@
+version: '3.8'
+
+services:
+  # Database
+  mysql:
+    image: mysql:8.0
+    container_name: nuigini-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: nuigini_insurance
+      MYSQL_USER: nuigini_user
+      MYSQL_PASSWORD: nuigini_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - nuigini-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "nuigini_user", "--password=nuigini_password"]
+      interval: 5s
+      retries: 10
+      timeout: 5s
+
+  # Redis for caching and queues
+  redis:
+    image: redis:7-alpine
+    container_name: nuigini-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nuigini-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+      timeout: 3s
+
+  # API Gateway (proxies to services)
+  api-gateway:
+    build:
+      context: .
+    #  assumes Dockerfile at services/api-gateway/Dockerfile
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: nuigini-api-gateway
+    ports:
+      - "3009:3000"        # gateway on host:3009 -> container:3000
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      # Proxy targets (use Docker service names + ports)
+      - AUTH_SERVICE_URL=http://auth-service:3000
+      - LEAD_SERVICE_URL=http://lead-service:3001
+      - QUOTE_SERVICE_URL=http://quote-service:3002
+      - POLICY_SERVICE_URL=http://policy-service:3003
+      - PAYMENT_SERVICE_URL=http://payment-service:3004
+      - CLAIMS_SERVICE_URL=http://claims-service:3005
+      - REINS_SERVICE_URL=http://reinsurance-service:3006
+      - ADMIN_SERVICE_URL=http://admin-service:3007
+      - ROLE_SERVICE_URL=http://notification-service:3008 # adjust if you have a separate role service
+    depends_on:
+      # gateway should start after its backends (ordering only)
+      - lead-service
+      - quote-service
+      - policy-service
+      - payment-service
+      - claims-service
+      - reinsurance-service
+      - notification-service
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Lead Management Service
+  lead-service:
+    build:
+      context: .
+      dockerfile: services/lead-service/Dockerfile
+    container_name: nuigini-lead-service
+    # For dev you can expose; for stricter isolation, remove ports and keep only "expose"
+    ports:
+      - "3001:3001"
+    # expose:
+    #   - "3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Quote Service
+  quote-service:
+    build:
+      context: .
+      dockerfile: services/quote-service/Dockerfile
+    container_name: nuigini-quote-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Policy Service
+  policy-service:
+    build:
+      context: .
+      dockerfile: services/policy-service/Dockerfile
+    container_name: nuigini-policy-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Payment Service
+  payment-service:
+    build:
+      context: .
+      dockerfile: services/payment-service/Dockerfile
+    container_name: nuigini-payment-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+      - STRIPE_SECRET_KEY=sk_test_your_stripe_key
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Claims Service
+  claims-service:
+    build:
+      context: .
+      dockerfile: services/claims-service/Dockerfile
+    container_name: nuigini-claims-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Reinsurance Service
+  reinsurance-service:
+    build:
+      context: .
+      dockerfile: services/reinsurance-service/Dockerfile
+    container_name: nuigini-reinsurance-service
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=development
+      - PORT=3006
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Rule Engine Service
+  rule-engine-service:
+    build:
+      context: .
+      dockerfile: services/rule-engine-service/Dockerfile
+    container_name: nuigini-rule-engine-service
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=development
+      - PORT=3007
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Notification (used here as "roles" target in gateway’s env; adjust if separate role-service exists)
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    container_name: nuigini-notification-service
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=development
+      - PORT=3008
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=your-email@gmail.com
+      - SMTP_PASS=your-app-password
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+  # Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: nuigini-auth-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=nuigini_insurance
+      - MYSQL_USER=nuigini_user
+      - MYSQL_PASSWORD=nuigini_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - nuigini-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  nuigini-network:
+    driver: bridge

@@ -1,0 +1,904 @@
+{
+  "info": {
+    "name": "Nuigini Insurance API",
+    "description": "Complete API collection for the Australian General Insurance Microservices Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "quoteId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "policyId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "claimId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin@nuigini.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser@example.com\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"roleId\": \"role-uuid-here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"your-refresh-token-here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Lead Management",
+      "item": [
+        {
+          "name": "Create Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"WEB\",\n  \"source\": \"Website Form\",\n  \"lineOfBusiness\": \"MOTOR\",\n  \"customerId\": \"{{customerId}}\",\n  \"description\": \"Customer interested in motor insurance\",\n  \"estimatedValue\": 1500.00,\n  \"contactMethod\": \"EMAIL\",\n  \"preferredContactTime\": \"AFTERNOON\",\n  \"marketingConsent\": true,\n  \"electronicCommsConsent\": true,\n  \"utmSource\": \"google\",\n  \"utmMedium\": \"cpc\",\n  \"utmCampaign\": \"motor_insurance_2024\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lead",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads", "{{leadId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Lead",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"QUALIFIED\",\n  \"notes\": \"Customer has provided all required information\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads", "{{leadId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Convert Lead to Quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lineOfBusiness\": \"MOTOR\",\n  \"productCode\": \"MOTOR_COMPREHENSIVE\",\n  \"riskData\": {\n    \"vehicleMake\": \"Toyota\",\n    \"vehicleModel\": \"Camry\",\n    \"vehicleYear\": 2020,\n    \"registrationNumber\": \"ABC123\",\n    \"driverAge\": 35,\n    \"driverLicenseType\": \"FULL\",\n    \"driverClaimsHistory\": 0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/convert",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads", "{{leadId}}", "convert"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Leads",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads?status=NEW&channel=WEB&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "NEW"
+                },
+                {
+                  "key": "channel",
+                  "value": "WEB"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Quoting & Rating",
+      "item": [
+        {
+          "name": "Create Quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"lineOfBusiness\": \"MOTOR\",\n  \"productCode\": \"MOTOR_COMPREHENSIVE\",\n  \"riskData\": {\n    \"vehicleMake\": \"Toyota\",\n    \"vehicleModel\": \"Camry\",\n    \"vehicleYear\": 2020,\n    \"registrationNumber\": \"ABC123\",\n    \"driverAge\": 35,\n    \"driverLicenseType\": \"FULL\",\n    \"driverClaimsHistory\": 0,\n    \"vehicleValue\": 25000,\n    \"excess\": 500\n  },\n  \"state\": \"NSW\",\n  \"validFrom\": \"2024-01-01T00:00:00Z\",\n  \"validTo\": \"2024-01-31T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quotes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "quotes"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Quote",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "quotes", "{{quoteId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Quote",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"riskData\": {\n    \"vehicleMake\": \"Toyota\",\n    \"vehicleModel\": \"Camry\",\n    \"vehicleYear\": 2020,\n    \"registrationNumber\": \"ABC123\",\n    \"driverAge\": 35,\n    \"driverLicenseType\": \"FULL\",\n    \"driverClaimsHistory\": 0,\n    \"vehicleValue\": 25000,\n    \"excess\": 750\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "quotes", "{{quoteId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Accept Quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"acceptedAt\": \"2024-01-15T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/accept",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "quotes", "{{quoteId}}", "accept"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Quote Documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quotes/{{quoteId}}/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "quotes", "{{quoteId}}", "documents"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Policy Management",
+      "item": [
+        {
+          "name": "Bind Policy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quoteId\": \"{{quoteId}}\",\n  \"inceptionDate\": \"2024-01-15T00:00:00Z\",\n  \"expiryDate\": \"2025-01-14T23:59:59Z\",\n  \"paymentMethod\": \"CARD\",\n  \"paymentDetails\": {\n    \"cardToken\": \"tok_visa\",\n    \"amount\": 1500.00\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/policies",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "policies"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Policy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/policies/{{policyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "policies", "{{policyId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Endorsement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"ADD_DRIVER\",\n  \"reason\": \"Adding spouse as additional driver\",\n  \"effectiveDate\": \"2024-06-01T00:00:00Z\",\n  \"changes\": {\n    \"additionalDriver\": {\n      \"name\": \"Jane Smith\",\n      \"age\": 32,\n      \"licenseType\": \"FULL\",\n      \"claimsHistory\": 0\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/policies/{{policyId}}/endorsements",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "policies", "{{policyId}}", "endorsements"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Policy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Vehicle sold\",\n  \"effectiveDate\": \"2024-06-15T00:00:00Z\",\n  \"calculationMethod\": \"PRO_RATA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/policies/{{policyId}}/cancellations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "policies", "{{policyId}}", "cancellations"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Offer Renewal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renewalDate\": \"2025-01-15T00:00:00Z\",\n  \"invitationDate\": \"2024-12-01T00:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/policies/{{policyId}}/renewals/offer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "policies", "{{policyId}}", "renewals", "offer"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Claims Management",
+      "item": [
+        {
+          "name": "Create Claim (FNOL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyId\": \"{{policyId}}\",\n  \"incidentDate\": \"2024-03-15T14:30:00Z\",\n  \"incidentType\": \"COLLISION\",\n  \"description\": \"Vehicle hit from behind at traffic lights\",\n  \"location\": {\n    \"address\": \"123 Main St, Sydney NSW 2000\",\n    \"latitude\": -33.8688,\n    \"longitude\": 151.2093\n  },\n  \"thirdParty\": {\n    \"name\": \"John Doe\",\n    \"registration\": \"XYZ789\",\n    \"insurance\": \"Other Insurance Co\"\n  },\n  \"estimatedDamage\": 5000.00,\n  \"policeReport\": true,\n  \"policeReportNumber\": \"PR123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/claims",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "claims"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Claim",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/claims/{{claimId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "claims", "{{claimId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Reserve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"component\": \"REPAIR\",\n  \"amount\": 4500.00,\n  \"reason\": \"Based on assessor quote\",\n  \"approvedBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/claims/{{claimId}}/reserves",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "claims", "{{claimId}}", "reserves"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Make Claim Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payeeId\": \"{{customerId}}\",\n  \"amount\": 4500.00,\n  \"component\": \"REPAIR\",\n  \"method\": \"BANK_TRANSFER\",\n  \"bankDetails\": {\n    \"accountName\": \"John Smith\",\n    \"bsb\": \"012-345\",\n    \"accountNumber\": \"12345678\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/claims/{{claimId}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "claims", "{{claimId}}", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Close Claim",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Repair completed and payment made\",\n  \"finalAmount\": 4500.00,\n  \"closedBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/claims/{{claimId}}/close",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "claims", "{{claimId}}", "close"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Rule Engine",
+      "item": [
+        {
+          "name": "Execute Rules",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"QUOTE\",\n  \"entityId\": \"{{quoteId}}\",\n  \"ruleTypes\": [\"UNDERWRITING\", \"RATING\"],\n  \"context\": {\n    \"lineOfBusiness\": \"MOTOR\",\n    \"driverAge\": 25,\n    \"driverClaimsHistory\": 2,\n    \"vehicleValue\": 30000,\n    \"state\": \"NSW\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rule-engine/execute",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rule-engine", "execute"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Rules",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"QUOTE\",\n  \"entityId\": \"test-123\",\n  \"ruleTypes\": [\"UNDERWRITING\"],\n  \"context\": {\n    \"lineOfBusiness\": \"MOTOR\",\n    \"driverAge\": 18,\n    \"driverClaimsHistory\": 5,\n    \"vehicleValue\": 50000,\n    \"state\": \"NSW\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rule-engine/test",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rule-engine", "test"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Rule Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rule-engine/types",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rule-engine", "types"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Rule Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rule-engine/stats?startDate=2024-01-01&endDate=2024-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rule-engine", "stats"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment Processing",
+      "item": [
+        {
+          "name": "Create Payment Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyId\": \"{{policyId}}\",\n  \"amount\": 1500.00,\n  \"method\": \"CARD\",\n  \"currency\": \"AUD\",\n  \"description\": \"Motor insurance premium payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/intents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "payments", "intents"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Authorize Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardToken\": \"tok_visa\",\n  \"billingAddress\": {\n    \"line1\": \"123 Main St\",\n    \"city\": \"Sydney\",\n    \"state\": \"NSW\",\n    \"postalCode\": \"2000\",\n    \"country\": \"AU\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/intents/{{paymentIntentId}}/authorize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "payments", "intents", "{{paymentIntentId}}", "authorize"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Capture Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1500.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/intents/{{paymentIntentId}}/capture",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "payments", "intents", "{{paymentIntentId}}", "capture"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Instalment Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyId\": \"{{policyId}}\",\n  \"totalAmount\": 1500.00,\n  \"instalmentCount\": 12,\n  \"frequency\": \"MONTHLY\",\n  \"startDate\": \"2024-01-15T00:00:00Z\",\n  \"paymentMethod\": \"DIRECT_DEBIT\",\n  \"bankDetails\": {\n    \"accountName\": \"John Smith\",\n    \"bsb\": \"012-345\",\n    \"accountNumber\": \"12345678\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/instalments/plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "instalments", "plans"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Process Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentId\": \"{{paymentId}}\",\n  \"amount\": 500.00,\n  \"reason\": \"Policy cancellation - pro-rata refund\",\n  \"method\": \"ORIGINAL_PAYMENT_METHOD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/refunds",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "refunds"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reinsurance",
+      "item": [
+        {
+          "name": "Create Treaty",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"QUOTA_SHARE\",\n  \"name\": \"Motor QS 2024\",\n  \"reinsurer\": \"Global Re\",\n  \"share\": 0.50,\n  \"commission\": 0.25,\n  \"inceptionDate\": \"2024-01-01T00:00:00Z\",\n  \"expiryDate\": \"2024-12-31T23:59:59Z\",\n  \"applicableLines\": [\"MOTOR\"],\n  \"attachment\": 0,\n  \"limit\": 1000000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reinsurance/treaties",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reinsurance", "treaties"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Calculate Cession",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"policyId\": \"{{policyId}}\",\n  \"treatyId\": \"{{treatyId}}\",\n  \"effectiveDate\": \"2024-01-15T00:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reinsurance/cessions/calculate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reinsurance", "cessions", "calculate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Premium Bordereaux",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reinsurance/bdx/premium?period=2024-01&treatyId={{treatyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reinsurance", "bdx", "premium"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "2024-01"
+                },
+                {
+                  "key": "treatyId",
+                  "value": "{{treatyId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Claims Bordereaux",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reinsurance/bdx/claims?period=2024-01&treatyId={{treatyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reinsurance", "bdx", "claims"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "2024-01"
+                },
+                {
+                  "key": "treatyId",
+                  "value": "{{treatyId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin & Configuration",
+      "item": [
+        {
+          "name": "Create Underwriting Rule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"High Risk Driver Decline\",\n  \"ruleType\": \"UNDERWRITING\",\n  \"priority\": 1,\n  \"condition\": \"{\\\"operator\\\":\\\"AND\\\",\\\"conditions\\\":[{\\\"operator\\\":\\\"GREATER_THAN\\\",\\\"field\\\":\\\"driverClaimsHistory\\\",\\\"value\\\":3},{\\\"operator\\\":\\\"LESS_THAN\\\",\\\"field\\\":\\\"driverAge\\\",\\\"value\\\":25}]}\",\n  \"action\": \"{\\\"action\\\":\\\"DECLINE\\\",\\\"reason\\\":\\\"High risk driver profile\\\"}\",\n  \"applicableEntities\": \"QUOTE,POLICY\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/uw-rules",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "uw-rules"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Duty Rates",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"NSW\",\n  \"lineOfBusiness\": \"MOTOR\",\n  \"rate\": 0.05,\n  \"effectiveFrom\": \"2024-01-01T00:00:00Z\",\n  \"effectiveTo\": \"2024-12-31T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/duty-rates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "duty-rates"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+} 

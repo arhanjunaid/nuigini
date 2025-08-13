@@ -1,0 +1,2 @@
+{"level":"info","message":"Database initialized successfully","service":"lead-service","timestamp":"2025-08-12T16:55:30.323Z"}
+{"level":"info","message":"Lead Service running on port 3001","service":"lead-service","timestamp":"2025-08-12T16:55:30.330Z"}
